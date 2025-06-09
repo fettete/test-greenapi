@@ -1,5 +1,7 @@
+import { AxiosError } from 'axios';
 import { sendMessage, envSet, isAuthorized } from '../../src/greenapi';
 import { sendMessageSchema } from '../../src/schemas';
+import { chatIdFormatValidationMessage, fieldNotAllowedEmptyValidationMessage } from '../../src/constants';
 
 describe('Green API: sendMessage', () => {
   let chatId: string;
@@ -16,8 +18,6 @@ describe('Green API: sendMessage', () => {
   });
 
   test('should send a message successfully (200)', async () => {
-    console.log(`Using chatId: ${chatId}`);
-
     const response = await sendMessage(chatId, 'Привет, мир!');
     expect(response.status).toBe(200);
     const { error } = sendMessageSchema.validate(response.data);
@@ -25,20 +25,41 @@ describe('Green API: sendMessage', () => {
   });
 
   test('should return 400 if message is empty string', async () => {
-    await expect(sendMessage(chatId, '')).rejects.toMatchObject({
-      response: { status: 400 },
-    });
+    try {
+      await sendMessage(chatId, '');
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        expect(err.response?.status).toBe(400);
+        expect(err.response?.data?.message).toBe(fieldNotAllowedEmptyValidationMessage("message"));
+      } else {
+        throw err;
+      }
+    }
   });
 
   test('should return 400 if chatId is missing', async () => {
-    await expect(sendMessage('', 'Hello')).rejects.toMatchObject({
-      response: { status: 400 },
-    });
+    try {
+      await sendMessage('', 'Test');
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        expect(err.response?.status).toBe(400);
+        expect(err.response?.data?.message).toBe(fieldNotAllowedEmptyValidationMessage("chatId"));
+      } else {
+        throw err;
+      }
+    }
   });
 
   test('should return 400 if chatId is invalid', async () => {
-    await expect(sendMessage('123', 'Test')).rejects.toMatchObject({
-      response: { status: 400 },
-    });
+    try {
+      await sendMessage('123', 'Test');
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        expect(err.response?.status).toBe(400);
+        expect(err.response?.data?.message).toBe(chatIdFormatValidationMessage);
+      } else {
+        throw err;
+      }
+    }
   });
 });
